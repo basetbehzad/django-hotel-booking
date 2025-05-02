@@ -1,0 +1,33 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+  {{ block.super }}
+
+  <h2>🏆 Top 3 Users (Monthly Bookings)</h2>
+  <table style="border: 1px solid #ccc; margin-bottom: 20px;">
+    <tr>
+      <th>Username</th>
+      <th>Bookings This Month</th>
+    </tr>
+    {% for user in top_month_users %}
+    <tr>
+      <td>{{ user.username }}</td>
+      <td>{{ user.bookings }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>📅 Top 3 Users (Yearly Bookings)</h2>
+  <table style="border: 1px solid #ccc;">
+    <tr>
+      <th>Username</th>
+      <th>Bookings This Year</th>
+    </tr>
+    {% for user in top_year_users %}
+    <tr>
+      <td>{{ user.username }}</td>
+      <td>{{ user.bookings }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

@@ -1,0 +1,51 @@
+<form style="display: none;">
+    {% csrf_token %}
+</form>
+<h1>Booking Summary</h1>
+<p><strong>Place:</strong> {{ booking.place.name }}</p>
+<p><strong>Start Date:</strong> {{ booking.start_date }}</p>
+<p><strong>End Date:</strong> {{ booking.end_date }}</p>
+<p><strong>Total Price:</strong> ${{ booking.total_price }}</p>
+<p><strong>Status:</strong> {{ booking.is_paid|yesno:"Paid,Unpaid" }}</p>
+
+{% if not booking.is_paid %}
+    <button id="pay-now-button">Pay Now</button>
+{% else %}
+    <a href="{% url 'reservation:download_reservation_pdf' booking.id %}">Download Reservation PDF</a>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const payNowButton = document.getElementById('pay-now-button');
+        const bookingId = {{ booking.id }};
+
+        if (payNowButton) {
+            payNowButton.addEventListener('click', async function () {
+                // Get CSRF token safely
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                try {
+                    const response = await fetch(`/api/bookings/${bookingId}/payment-success/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        window.location.href = `/booking/${bookingId}/success/`;
+                    } else {
+                        const errorData = await response.json();
+                        alert(errorData.detail || 'Payment failed.');
+                    }
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    alert('An error occurred during payment.');
+                }
+            });
+        }
+    });
+</script>
+

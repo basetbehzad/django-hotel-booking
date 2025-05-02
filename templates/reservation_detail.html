@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Reservation Details</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .details {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .detail-row {
+            display: flex;
+            margin-bottom: 10px;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            width: 200px;
+        }
+
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 0 10px;
+        }
+
+        .btn.secondary {
+            background: #2196F3;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Reservation Confirmation</h1>
+        <p>Your booking has been successfully processed</p>
+    </div>
+
+    <div class="details">
+        <div class="detail-row">
+            <div class="detail-label">Reservation ID:</div>
+            <div>{{ booking.id }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Place:</div>
+            <div>{{ booking.place.name }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Guest Name:</div>
+            <div>{{ booking.user.get_display_name }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Check-in Date:</div>
+            <div>{{ booking.start_date|date:"F j, Y" }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Check-out Date:</div>
+            <div>{{ booking.end_date|date:"F j, Y" }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Total Price:</div>
+            <div>${{ booking.total_price }}</div>
+        </div>
+        <div class="detail-row">
+            <div class="detail-label">Payment Status:</div>
+            <div>
+                {% if booking.is_paid %}
+                    <span style="color: green;">Paid</span>
+                {% else %}
+                    <span style="color: red;">Pending</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <a href="{% url 'reservation:download_reservation_pdf' pk=booking.id %}" class="btn">
+            Download as PDF
+        </a>
+        {#            <a href="{% url 'dashboard' %}" class="btn secondary">#}
+        {#                Back to Dashboard#}
+        {#            </a>#}
+    </div>
+</div>
+</body>
+</html>

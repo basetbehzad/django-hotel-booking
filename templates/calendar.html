@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Calendar</title>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+</head>
+<body>
+<h1>Booking Calendar for {{ place.name }}</h1>
+<div id="calendar"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var hotelId = "{{ place.id }}";  // Get hotel ID from Django context
+
+        fetch(`/api/calendar/${hotelId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const events = [];
+
+                data.paid_dates.forEach(date => {
+                    events.push({
+                        title: "Booked",
+                        start: date,
+                        color: "red"
+                    });
+                });
+
+                data.pending_dates.forEach(date => {
+                    events.push({
+                        title: "Waiting for Payment",
+                        start: date,
+                        color: "yellow"
+                    });
+                });
+
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    events: events
+                });
+
+                calendar.render();
+            });
+
+    });
+</script>
+</body>
+</html>

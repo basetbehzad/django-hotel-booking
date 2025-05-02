@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ place.name }}</title>
+
+    <!-- FullCalendar CSS (required!) -->
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
+
+    <!-- FullCalendar JS -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+</head>
+
+<body>
+<h1>{{ place.name }}</h1>
+<p><strong>Category:</strong> {{ place.category.name }}</p>
+<p><strong>Price per night:</strong> ${{ place.price_per_night }}</p>
+<p><strong>Description:</strong> {{ place.description }}</p>
+<p><strong>Address:</strong> {{ place.address }}</p>
+<p><strong>Number of Rooms:</strong> {{ place.num_rooms }}</p>
+<p><strong>Max Persons:</strong> {{ place.num_persons }}</p>
+
+
+<!-- Booking Calendar -->
+<h2>Availability Calendar</h2>
+<div id="calendar"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+        var hotelId = "{{ place.id }}";
+
+        fetch(`/api/calendar/${hotelId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const events = [];
+
+                if (Array.isArray(data.paid_dates)) {
+                    data.paid_dates.forEach(date => {
+                        events.push({
+                            title: "Booked",
+                            start: date,
+                            color: "red"
+                        });
+                    });
+                }
+
+                if (Array.isArray(data.pending_dates)) {
+                    data.pending_dates.forEach(date => {
+                        events.push({
+                            title: "Waiting for Payment",
+                            start: date,
+                            color: "yellow"
+                        });
+                    });
+                }
+
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    events: events
+                });
+
+                calendar.render();
+            });
+
+
+    });
+</script>
+<form id="booking-form">
+    {% csrf_token %}
+    <label for="start_date">Start Date:</label>
+    <input type="date" id="start_date" name="start_date" required>
+
+    <label for="end_date">End Date:</label>
+    <input type="date" id="end_date" name="end_date" required>
+
+    <p>Total Price: <span id="total_price">-</span></p>
+
+    <button type="submit">Book Now</button>
+</form>
+
+<div id="booking-message"></div>
+
+<script>
+    const startDateInput = document.getElementById('start_date');
+    const endDateInput = document.getElementById('end_date');
+    const totalPriceSpan = document.getElementById('total_price');
+    const bookingForm = document.getElementById('booking-form');
+    const messageDiv = document.getElementById('booking-message');
+
+    const pricePerNight = {{ place.price_per_night }};  // from view context
+    const placeId = {{ place.id }};  // for booking payload
+
+    function isValidDate(date) {
+        return !isNaN(date.getTime());
+    }
+
+    function calculatePrice() {
+        const start = new Date(startDateInput.value);
+        const end = new Date(endDateInput.value);
+
+        console.log("Start Date:", start);
+        console.log("End Date:", end);
+
+        if (isValidDate(start) && isValidDate(end) && end > start) {
+            const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            const total = nights * pricePerNight;
+            totalPriceSpan.textContent = total + " $";
+            return total;
+        } else {
+            totalPriceSpan.textContent = "-";
+            return null;
+        }
+    }
+
+    startDateInput.addEventListener('change', function () {
+        console.log('Start date changed');
+        calculatePrice();
+    });
+
+    endDateInput.addEventListener('change', function () {
+        console.log('End date changed');
+        calculatePrice();
+    });
+
+    bookingForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const totalPrice = calculatePrice();
+
+        if (!totalPrice) {
+            messageDiv.textContent = "Please enter valid dates.";
+            return;
+        }
+
+        const data = {
+            start_date: startDateInput.value,
+            end_date: endDateInput.value,
+            total_price: totalPrice,
+            place: placeId
+        };
+        const token = localStorage.getItem('access_token');
+        console.log("Token:", token);
+        fetch('/api/bookings/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Authorization': 'Bearer ' + token // Corrected Authorization header format
+            },
+            body: JSON.stringify(data)
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(err.non_field_errors ? err.non_field_errors[0] : 'Booking failed.');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                window.location.href = `/booking/${data.id}/`;
+            })
+            .catch(error => {
+                messageDiv.textContent = error.message;
+            });
+
+    });
+</script>
+<hr>
+<h2>Comments</h2>
+<div id="comments-container"></div>
+
+<div id="new-comment-section" style="margin-top: 20px;">
+    <h3>Leave a Comment</h3>
+    <textarea id="new-comment-text" rows="3" style="width: 100%;"></textarea><br>
+    <button id="submit-comment-btn">Submit Comment</button>
+    <p id="comment-error" style="color: red;"></p>
+</div>
+
+<script>
+    const placeIdForComment = {{ place.id }};
+    const token = localStorage.getItem('access_token');
+    const currentUser = localStorage.getItem('current_user');  // Set this in login (e.g. username)
+    const commentContainer = document.getElementById('comments-container');
+    const commentError = document.getElementById('comment-error');
+
+
+
+    // Render comment recursively, with nesting level tracking
+    function renderComment(comment, level = 0) {
+        if (level > 2) return '';  // Max 3 levels (0,1,2)
+
+        const canReply = level < 2;
+        const isOwner = comment.user === currentUser;
+        console.log("currentUser:", currentUser, "comment.user:", comment.user);
+
+
+        const repliesHtml = (comment.replies || []).map(reply => renderComment(reply, level + 1)).join('');
+
+        return `
+            <div class="comment" style="border:1px solid #ccc; padding:10px; margin-top:10px; margin-left:${level * 30}px;">
+                <strong>${comment.user}</strong> - ${new Date(comment.created_at).toLocaleString()}
+                <p>${comment.content}</p>
+
+                ${canReply ? `
+                <div class="reply-section" style="margin-top: 10px;">
+                    <textarea class="reply-text" rows="2" style="width:100%;"></textarea>
+                    <button class="reply-btn" data-comment-id="${comment.id}">Reply</button>
+                </div>` : ''}
+
+                ${isOwner ? `
+                <button class="delete-btn" data-comment-id="${comment.id}" style="margin-top:5px; color:red;">Delete</button>
+                ` : ''}
+
+                <div class="replies">${repliesHtml}</div>
+            </div>
+        `;
+    }
+
+    // Load and display comments
+    function loadComments() {
+        fetch(`/api/places/${placeIdForComment}/comments/`)
+            .then(res => res.json())
+            .then(data => {
+                commentContainer.innerHTML = data.map(comment => renderComment(comment)).join('');
+
+                // Reply listeners
+                document.querySelectorAll('.reply-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const commentId = this.getAttribute('data-comment-id');
+                        const replyText = this.parentElement.querySelector('.reply-text').value;
+
+                        fetch(`/api/comments/${commentId}/reply/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify({content: replyText, place: placeIdForComment})
+                        })
+                            .then(res => {
+                                if (!res.ok) throw new Error('Reply failed.');
+                                return res.json();
+                            })
+                            .then(() => loadComments());
+                    });
+                });
+
+                // Delete listeners
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        const commentId = this.getAttribute('data-comment-id');
+
+                        if (confirm("Are you sure you want to delete this comment?")) {
+                            fetch(`/api/comments/${commentId}/delete/`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': 'Bearer ' + token
+                                }
+                            })
+                                .then(res => {
+                                    if (!res.ok) throw new Error('Delete failed.');
+                                    loadComments();
+                                });
+                        }
+                    });
+                });
+            });
+    }
+
+    loadComments();
+
+    // Submit new comment
+    document.getElementById('submit-comment-btn').addEventListener('click', function () {
+        const content = document.getElementById('new-comment-text').value;
+
+        fetch(`/api/comments/create/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({content: content, place: placeIdForComment})
+        })
+            .then(res => {
+                if (!res.ok) return res.json().then(err => {
+                    throw new Error(err.detail || 'Comment failed.')
+                });
+                return res.json();
+            })
+            .then(() => {
+                document.getElementById('new-comment-text').value = '';
+                commentError.textContent = '';
+                loadComments();
+            })
+            .catch(error => {
+                commentError.textContent = error.message;
+            });
+    });
+</script>
+
+
+</body>
+</html>

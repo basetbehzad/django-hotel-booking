@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Reservation Confirmation - #{{ booking.id }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        .details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .details td {
+            padding: 8px 0;
+            vertical-align: top;
+        }
+        .details td:first-child {
+            font-weight: bold;
+            width: 30%;
+        }
+        .status-paid {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .status-pending {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            text-align: center;
+            color: #7f8c8d;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .logo img {
+            max-height: 60px;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <!-- Replace with your logo if available -->
+        <h2>Your Booking Service</h2>
+    </div>
+
+    <div class="header">
+        <h1>Reservation Confirmation</h1>
+        <p>Booking Reference: #{{ booking.id }}</p>
+    </div>
+
+    <table class="details">
+        <tr>
+            <td>Reservation ID:</td>
+            <td>#{{ booking.id }}</td>
+        </tr>
+        <tr>
+            <td>Place:</td>
+            <td>{{ booking.place.name }}</td>
+        </tr>
+        <tr>
+            <td>Guest Name:</td>
+            <td>{{ booking.user.get_full_name }}</td>
+        </tr>
+        <tr>
+            <td>Check-in Date:</td>
+            <td>{{ booking.start_date|date:"F j, Y" }}</td>
+        </tr>
+        <tr>
+            <td>Check-out Date:</td>
+            <td>{{ booking.end_date|date:"F j, Y" }}</td>
+        </tr>
+        <tr>
+            <td>Total Price:</td>
+            <td>${{ booking.total_price }}</td>
+        </tr>
+        <tr>
+            <td>Payment Status:</td>
+            <td>
+                {% if booking.is_paid %}
+                    <span class="status-paid">PAID</span>
+                {% else %}
+                    <span class="status-pending">PENDING PAYMENT</span>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer">
+        <p>Generated on {% now "F j, Y" %} at {% now "g:i A" %}</p>
+        <p>Thank you for your reservation!</p>
+    </div>
+</body>
+</html>

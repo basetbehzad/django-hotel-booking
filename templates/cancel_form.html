@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cancel Booking</title>
+    <style>
+        .cancel-form {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .booking-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #errorMessage {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="cancel-form">
+    <h2>Cancel Booking</h2>
+
+    <div class="booking-info">
+        <h3>{{ booking.place_name }}</h3>
+        <p>Dates: {{ booking.start_date }} to {{ booking.end_date }}</p>
+        <p>Total Price: ${{ booking.total_price }}</p>
+        <p id="refund-info"></p>
+    </div>
+
+    <form id="cancelForm" method="post" action="{% url 'reservation:cancel-booking' booking.id %}">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Reason for Cancellation:</label>
+            <textarea name="reason" required minlength="10"></textarea>
+        </div>
+        <button type="submit" id="submitButton">Submit Cancellation Request</button>
+        <div id="errorMessage"></div>
+        <a href="{% url 'account:profile-page' %}" style="display: inline-block; margin-top: 15px;">← Back to
+            Profile</a>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Calculate refund info
+        const startDate = new Date("{{ booking.start_date|date:'Y-m-d' }}");
+        const now = new Date();
+        const hoursDiff = (startDate - now) / (1000 * 60 * 60);
+
+        let refundText = '';
+        if (hoursDiff < 24) {
+            refundText = 'No refund available (less than 24 hours before stay)';
+        } else if (hoursDiff < 72) {
+            refundText = `50% refund available: ${{ booking.total_price|floatformat:2 }}`;
+        } else {
+            refundText = `Full refund available: ${{ booking.total_price|floatformat:2 }}`;
+        }
+
+        document.getElementById('refund-info').textContent = refundText;
+
+        // Form submission handler
+        document.getElementById('cancelForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const submitButton = document.getElementById('submitButton');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.style.display = 'none';
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Processing...';
+
+            try {
+                const reason = document.querySelector('textarea[name="reason"]').value;
+                if (reason.length < 10) {
+                    throw {detail: 'Please provide a more detailed reason (at least 10 characters)'};
+                }
+
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    },
+                    body: JSON.stringify({reason})
+                });
+
+                if (response.ok) {
+                    alert('Cancellation request submitted successfully!');
+                    window.location.href = "{% url 'account:profile-page' %}";
+                } else {
+                    const error = await response.json();
+                    throw error;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorMessage.textContent = error.detail || 'Cancellation failed. Please try again.';
+                errorMessage.style.display = 'block';
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Submit Cancellation Request';
+            }
+        });
+    });
+</script>
+</body>
+</html>

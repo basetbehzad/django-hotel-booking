@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <script>
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            try {
+                // Get JWT tokens
+                const tokenResponse = await fetch('/api/user/token/', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({username, password}),
+                });
+
+                if (!tokenResponse.ok) throw new Error('JWT login failed!');
+                const {access, refresh} = await tokenResponse.json();
+
+                // Establish session
+                const sessionResponse = await fetch('/api/session-login/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({username, password}),
+                    credentials: 'include'
+                });
+
+                if (!sessionResponse.ok) {
+                    const error = await sessionResponse.json();
+                    throw new Error(error.detail || 'Session login failed');
+                }
+
+                // Store tokens and redirect
+                localStorage.setItem('access_token', access);
+                localStorage.setItem('refresh_token', refresh);
+                const userInfoResponse = await fetch('/api/user/', {
+                    headers: {
+                        'Authorization': 'Bearer ' + access
+                    }
+                });
+
+                if (!userInfoResponse.ok) throw new Error('Failed to fetch user info');
+
+                const userData = await userInfoResponse.json();
+                localStorage.setItem('current_user', userData.username);  // 🔥 Store username
+
+                window.location.href = '/search/';
+
+            } catch (error) {
+                alert(error.message);
+                console.error('Login error:', error);
+            }
+        }
+    </script>
+</head>
+<body>
+<h1>Login</h1>
+<form id="login-form">
+    {% csrf_token %}  <!-- Add CSRF token here -->
+    <input type="text" id="username" placeholder="Username" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button type="button" onclick="login()">Login</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+  {{ block.super }}
+
+  <h2>🏨 Top 3 Places (Monthly Bookings)</h2>
+  <table style="border: 1px solid #ccc; margin-bottom: 20px;">
+    <tr>
+      <th>Place Name</th>
+      <th>Bookings This Month</th>
+    </tr>
+    {% for place in top_month_places %}
+    <tr>
+      <td>{{ place.name }}</td>
+      <td>{{ place.bookings }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <h2>📅 Top 3 Places (Yearly Bookings)</h2>
+  <table style="border: 1px solid #ccc;">
+    <tr>
+      <th>Place Name</th>
+      <th>Bookings This Year</th>
+    </tr>
+    {% for place in top_year_places %}
+    <tr>
+      <td>{{ place.name }}</td>
+      <td>{{ place.bookings }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+{% endblock %}

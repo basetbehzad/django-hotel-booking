@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Places</title>
+</head>
+<body>
+<h1>Search for a Place</h1>
+<form method="GET" action="{% url 'place:search_places' %}">
+    {{ form.as_p }}
+    <button type="submit">Search</button>
+</form>
+
+<h2>Search Results</h2>
+<ul>
+    {% for place in places %}
+        <div class="place">
+            <h2><a href="{% url 'place:place_detail' place.id %}">{{ place.name }}</a></h2>
+            <p>{{ place.description }}</p>
+            <p>Category: {{ place.category }}</p>
+            <p>Price per night: ${{ place.price_per_night }}</p>
+        </div>
+    {% endfor %}
+</ul>
+</body>
+</html>
